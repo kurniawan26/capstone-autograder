@@ -61,7 +61,7 @@ curl -X POST http://127.0.0.1:8090/v1/capture \
   -H 'Content-Type: application/json' \
   -d '{
     "submission_id": "n8n-run-123",
-    "live_url": "https://portfolio-budi.vercel.app"
+    "live_url": "https://tanemin.netlify.app/"
   }'
 ```
 
@@ -88,7 +88,7 @@ Respons:
   "duration_ms": 8421,
   "build": {
     "strategy": "live_url",
-    "live_url": "https://portfolio-budi.vercel.app",
+    "live_url": "https://tanemin.netlify.app/",
     "notes": ["Captured directly from the submitted URL; no container was built."]
   },
   "screenshots": [
@@ -128,7 +128,7 @@ curl -X POST http://127.0.0.1:8090/v1/capture \
   -H 'Content-Type: application/json' \
   -d '{
     "submission_id": "n8n-run-124",
-    "live_url": "https://portfolio-budi.vercel.app",
+    "live_url": "https://tanemin.netlify.app/",
     "scan_routes": true,
     "max_routes": 6
   }'
@@ -138,10 +138,10 @@ Hasilnya satu entri per halaman, dinamai dari path-nya:
 
 ```json
 "screenshots": [
-  { "name": "main",    "url": "https://portfolio-budi.vercel.app/" },
-  { "name": "about",   "url": "https://portfolio-budi.vercel.app/about.html" },
-  { "name": "produk",  "url": "https://portfolio-budi.vercel.app/produk.html" },
-  { "name": "kontak",  "url": "https://portfolio-budi.vercel.app/kontak.html" }
+  { "name": "main",    "url": "https://tanemin.netlify.app//" },
+  { "name": "about",   "url": "https://tanemin.netlify.app//about.html" },
+  { "name": "produk",  "url": "https://tanemin.netlify.app//produk.html" },
+  { "name": "kontak",  "url": "https://tanemin.netlify.app//kontak.html" }
 ]
 ```
 
