@@ -6,25 +6,16 @@ membalas screenshot WebP yang siap dikirim ke model multimodal.
 Node ini **berhenti pada bukti**. Ia tidak menilai, tidak menyimpan skor, dan
 tidak mengingat apa pun antar request. Penilaian, penyimpanan hasil, retry, dan
 notifikasi dikerjakan platform otomasi yang memanggilnya — n8n dan sejenisnya.
-Yang tersisa di sini adalah bagian yang memang butuh mesin dengan Docker dan
-browser di atasnya.
 
 ```
 n8n  ──POST /v1/capture──▶  node ini  ──screenshot WebP──▶  n8n  ──▶  LLM  ──▶  skor
 ```
-
-Sisi n8n-nya sudah disiapkan: [`docs/n8n-workflow.md`](docs/n8n-workflow.md)
-menjelaskan workflow sebelas node, dan
-[`docs/n8n-workflow.json`](docs/n8n-workflow.json) bisa langsung diimpor. Prompt
-dan schema penilaian yang sudah tervalidasi ada di
-[`docs/grading-prompt.md`](docs/grading-prompt.md).
 
 ## Struktur
 
 | Direktori         | Isi                                                        |
 | ----------------- | ---------------------------------------------------------- |
 | `docker-sandbox/` | Seluruh node: HTTP API, build ephemeral, capture, optimizer |
-| `docs/`           | Kontrak penilaian dan workflow n8n siap impor               |
 
 `docker-compose.yml` menyediakan MinIO dan BuildKit.
 
@@ -32,9 +23,8 @@ dan schema penilaian yang sudah tervalidasi ada di
 
 Go 1.24 · Docker · Node 20 (hanya untuk mengunduh driver Playwright)
 
-Tidak ada Postgres, tidak ada Elixir, tidak ada toolchain Rust. Encoder WebP-nya
-pure Go — `gen2brain/webp` memuat libwebp lewat purego, jadi cgo pun tidak
-diperlukan.
+Encoder WebP-nya pure Go — `gen2brain/webp` memuat libwebp lewat purego, jadi
+cgo tidak diperlukan.
 
 ## Setup
 
@@ -87,8 +77,8 @@ curl -X POST http://127.0.0.1:8090/v1/capture \
 | `inline_images`       | —     | Default `true`; set `false` bila gambar cukup diambil dari storage |
 
 \* Minimal salah satu dari `live_url` atau `source_key`. Bila keduanya ada,
-`live_url` yang menang — deployment yang jalan lebih murah dan lebih jujur
-daripada membangun ulang proyek yang sama.
+`live_url` yang menang — deployment yang jalan lebih murah daripada membangun
+ulang proyek yang sama.
 
 Respons:
 
@@ -126,8 +116,7 @@ dapat dijangkau.
 
 `name` menentukan label gambar pada prompt, dan `url` memberi tahu model halaman
 mana yang sedang dilihatnya. `main` selalu ada; `interaction` hanya muncul bila
-klik navigasi benar-benar menghasilkan tampilan berbeda — mengirim gambar
-duplikat menggandakan tagihan token tanpa menambah bukti.
+klik navigasi benar-benar menghasilkan tampilan berbeda.
 
 ### Memindai seluruh halaman
 
@@ -156,25 +145,23 @@ Hasilnya satu entri per halaman, dinamai dari path-nya:
 ]
 ```
 
-**Yang dipindai hanyalah navigasi, bukan semua link.** Ini pembedaan yang
-menentukan. Setiap `<a href>` di halaman adalah himpunan yang salah: body copy
-sebuah portfolio menaut ke repo GitHub, grid toko menaut ke lima puluh halaman
-produk, footer menaut ke kebijakan privasi yang tidak pernah diminta brief.
-Pencarian karenanya berjalan pada landmark navigasi dan berhenti di yang pertama
-berisi:
+**Yang dipindai hanyalah navigasi, bukan semua link.** Setiap `<a href>` di
+halaman adalah himpunan yang salah: body copy menaut ke repo GitHub, grid toko
+menaut ke lima puluh halaman produk, footer menaut ke kebijakan privasi yang
+tidak pernah diminta brief. Pencarian karenanya berjalan pada landmark navigasi
+dan berhenti di yang pertama berisi:
 
 ```
 <nav> / role="navigation"   →   <header>   →   semua link di halaman
 ```
 
-Yang terakhir adalah fallback sungguhan untuk markup tanpa landmark sama sekali,
-dan pemakaiannya dilaporkan di `build.notes` — bukan diterapkan diam-diam,
-karena di situlah daftar rute berhenti berarti "halaman-halaman situs ini".
+Yang terakhir adalah fallback untuk markup tanpa landmark sama sekali, dan
+pemakaiannya dilaporkan di `build.notes`.
 
-Kedalamannya sengaja satu tingkat: navigasi milik halaman utama saja. Nav itu
-sama di setiap halaman proyek normal, jadi tingkat kedua sebagian besar hanya
-mengunjungi ulang yang sudah ditemukan — dan pada portfolio yang punya indeks
-blog, rekursi berubah jadi crawl tanpa batas.
+Kedalamannya satu tingkat: navigasi milik halaman utama saja. Nav itu sama di
+setiap halaman proyek normal, jadi tingkat kedua sebagian besar hanya mengunjungi
+ulang yang sudah ditemukan — dan pada portfolio yang punya indeks blog, rekursi
+berubah jadi crawl tanpa batas.
 
 Yang ikut disaring: link lintas-origin, `mailto:`/`tel:`/`javascript:`, tautan
 unduhan (`.pdf`, `.zip`, gambar, font), dan anchor `#bagian` yang cuma menggulir
@@ -208,8 +195,7 @@ mencocokkan string pesan:
 | `optimize`, `upload`                                  | Masalah di node ini                 | ya             |
 
 Lima yang pertama deterministik: ZIP yang sama gagal dengan cara yang sama, dan
-deployment yang mati akan tetap mati. Mengulangnya hanya membakar menit BuildKit.
-Atur retry di n8n sesuai tabel ini.
+deployment yang mati akan tetap mati. Atur retry di n8n sesuai tabel ini.
 
 ### `GET /healthz`
 
@@ -229,8 +215,7 @@ URL  →  validasi + resolve host  →  Playwright: full-page + scroll + satu in
 
 Nol image, nol container, nol menit BuildKit. Rantai ZIP di bawah ini ada
 semata-mata untuk menghasilkan sebuah URL yang bisa dibuka; kalau siswa sudah
-punya satu, membangunnya ulang murni biaya — build dingin pertama untuk sebuah
-stack memakan ~220 detik.
+punya satu, membangunnya ulang murni biaya.
 
 ZIP dipakai bila URL tidak diisi. Karena bentuk proyek siswa sangat beragam,
 worker menentukan cara build secara berjenjang dan berhenti di kecocokan
@@ -261,34 +246,28 @@ PNG dari Playwright didekode, diturunkan bila melewati plafon, lalu dienkode
 WebP pada kualitas 78 — pita di mana WebP berhenti membuang byte dengan cepat
 dan mulai membuang detail.
 
-Ini dulunya NIF Rust yang dimuat orchestrator Elixir. Orchestrator-nya sudah
-tidak ada, jadi pekerjaannya pindah ke satu-satunya proses yang memang memegang
-pikselnya. Tidak ada lagi yang menyeberangi batas proses.
-
 ### Plafonnya lebar, bukan tinggi
 
 Plafon lebar 1920px adalah penghematan token yang murah: model tidak mendapat
 apa pun dari screenshot selebar 2400px yang tidak ia dapat dari 1920px.
 
-Plafon tingginya sengaja 8000px, dan itulah inti persoalannya. Screenshot
-full-page rutin empat sampai sepuluh kali lebih tinggi daripada lebarnya, jadi
-batas tinggi 1080px yang konvensional akan menurunkan capture 1440×3951 menjadi
-**393×1080** — rasio aspek terjaga sempurna, teksnya hancur total. Ini bukan
-hipotesis; itu keluaran nyata versi pertama port ini, ketahuan saat uji asap ke
-halaman sungguhan. Keterbacaan ada di lebar, jadi lebar yang dilindungi.
+Plafon tingginya sengaja 8000px. Screenshot full-page rutin empat sampai sepuluh
+kali lebih tinggi daripada lebarnya, jadi batas tinggi 1080px yang konvensional
+akan menurunkan capture 1440×3951 menjadi **393×1080** — rasio aspek terjaga
+sempurna, teksnya hancur total. Keterbacaan ada di lebar, jadi lebar yang
+dilindungi.
 
 Bila sebuah halaman tetap melewati plafon tinggi, `MinWidth` 960px yang menang:
 gambar dibiarkan lebih tinggi dari plafon daripada teksnya diperas sampai tak
 terbaca.
 
-Resampler-nya CatmullRom, bukan Lanczos3 seperti versi Rust. Pada screenshot
-full-page, kernel yang lebih tajam memakan beberapa ratus milidetik dan tidak
-membeli apa pun yang bisa dilihat penilai, karena sumbernya UI yang dirender 1x,
-bukan foto.
+Resampler-nya CatmullRom. Pada screenshot full-page, kernel yang lebih tajam
+memakan beberapa ratus milidetik dan tidak membeli apa pun yang bisa dilihat
+penilai, karena sumbernya UI yang dirender 1x, bukan foto.
 
 ### Rasio reduksi bergantung pada isi, bukan pada encoder
 
-Terukur pada uji asap:
+Terukur pada uji asap, semuanya `downscaled=false`:
 
 | Halaman                        | Ukuran      | PNG    | WebP   | Reduksi | Waktu  |
 | ------------------------------ | ----------- | ------ | ------ | ------- | ------ |
@@ -297,17 +276,8 @@ Terukur pada uji asap:
 | `go.dev` interaction           | 1440×3892   | 442 KB | 212 KB | 51,9%   | 351 ms |
 
 Halaman yang datar dan hemat sebagai PNG hanya menyusut sepertiga; yang berisi
-foto atau gradien bergranul jauh melampaui itu. Target NFR lama 70–85% tidak
-realistis untuk UI web pada umumnya.
-
-Angka-angka di atas semuanya `downscaled=false`. Versi pertama port ini
-melaporkan **93,1%** untuk halaman yang sama — tetapi itu sebagian besar
-penghancuran, bukan kompresi: 93% pikselnya memang dibuang. Rasio yang menyusut
-setelah bug plafon diperbaiki adalah rasio yang jujur.
-
-Ini juga terlihat di test suite: fixture gradien mulus justru membesar setelah
-dienkode lossy, jadi klaim "WebP lebih kecil" diuji pada konten yang tidak dapat
-diprediksi PNG, bukan pada gradien.
+foto atau gradien bergranul jauh melampaui itu. Reduksi 70–85% tidak realistis
+untuk UI web pada umumnya.
 
 ## Keamanan
 
@@ -350,32 +320,26 @@ Kedua versi gambar diunggah ke bucket `screenshots`:
 `<submission_id>/<name>.png` dan `<submission_id>/<name>.webp`.
 
 Pemanggil mendapat WebP, tetapi PNG tetap disimpan sebagai bukti yang tidak
-pernah diresample — sengketa nilai diperiksa terhadap gambar aslinya. Karena
-tidak ada lagi dashboard yang membacanya, bucket ini efektif menjadi arsip
-tulis-saja; isinya dilihat lewat konsol MinIO di :9001 bila diperlukan.
+pernah diresample — sengketa nilai diperiksa terhadap gambar aslinya. Isinya
+dilihat lewat konsol MinIO di :9001 bila diperlukan.
 
 Tidak ada pembersihan otomatis. Sebuah lifecycle rule di MinIO adalah tempat
 yang tepat untuk itu, dan belum dipasang.
 
-## Yang sudah dan belum diukur
+## Performa dan batasan
 
 Terverifikasi lewat uji asap terhadap situs sungguhan:
 
-- **Siklus penuh jalur URL: 2,8 detik** untuk halaman sederhana satu screenshot,
-  **9,8 detik** untuk halaman panjang dengan dua screenshot. Bandingkan dengan
-  ~220 detik build dingin pada jalur ZIP.
+- **Jalur URL: 2,8 detik** untuk halaman sederhana satu screenshot, **9,8 detik**
+  untuk halaman panjang dengan dua screenshot.
+- **Jalur ZIP:** build dingin lewat Railpack untuk situs statis 4 halaman
+  146 detik; request kedua dengan image ter-cache **17,8 detik** termasuk
+  pemindaian 4 rute.
 - **Kompresi: 350–440 ms** per screenshot full-page 1440×~3900 tanpa downscale.
-  Lebih lambat dari 75 ms yang pernah dicatat Rust, tetapi angka Rust itu untuk
-  gambar 1440×900 — sekitar seperempat luasnya. Per piksel keduanya sebanding.
 - **Proteksi SSRF menolak** loopback, `169.254.169.254`, `localhost`, skema
   `file:`, dan URL berkredensial.
-- **Jalur ZIP end-to-end.** Build dingin lewat Railpack untuk situs statis
-  4 halaman: 146 detik. Request kedua dengan image ter-cache: **17,8 detik**
-  termasuk pemindaian 4 rute.
-- **Pemindaian rute.** Fixture 4 halaman lewat jalur ZIP, dan `go.dev` lewat
-  jalur URL (4 dari 13 halaman nav, 25 detik). Penyaringan landmark terbukti:
-  pada fixture, link body/footer/unduhan/lintas-origin semuanya tersaring; pada
-  go.dev hanya 12 rute nav yang terbaca dari halaman berisi puluhan link.
+- **Pemindaian rute** terbukti menyaring link body/footer/unduhan/lintas-origin;
+  pada `go.dev` hanya 12 rute nav yang terbaca dari halaman berisi puluhan link.
 
 Belum diukur:
 
@@ -386,7 +350,7 @@ Belum diukur:
 - SPA hash-router sungguhan. Logika `#/rute` ada dan teruji pada unit test,
   tetapi belum pernah dijalankan terhadap SPA nyata.
 
-## Catatan lingkungan
+## Catatan Environtment
 
 Driver `playwright-go` v0.6000.0 mengunduh dari `playwright.azureedge.net` yang
 sudah dipensiunkan Microsoft (semua mirror 404). `scripts/install-playwright-driver.sh`
