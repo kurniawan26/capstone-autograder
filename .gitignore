@@ -1,0 +1,11 @@
+# Go
+docker-sandbox/bin/
+
+# Node (Playwright driver)
+node_modules/
+
+# Local secrets & scratch
+.env
+.env.*
+!.env.example
+tmp/

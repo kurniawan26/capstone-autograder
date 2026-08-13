@@ -1,0 +1,13 @@
+name: capstone-autograder
+
+services:
+  buildkit:
+    image: moby/buildkit:latest
+    container_name: autograder-buildkit
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - buildkit_cache:/var/lib/buildkit
+
+volumes:
+  buildkit_cache:
