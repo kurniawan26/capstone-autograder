@@ -306,8 +306,6 @@ func discoverRoutes(page playwright.Page) ([]route, string, error) {
 					try { u = new URL(a.href, location.href); } catch { continue; }
 					if (u.origin !== cur.origin) continue;
 
-					// "#contact" scrolls the page we already have. "#/contact" is
-					// how a hash-router SPA spells a genuinely different view.
 					const hashRoute = u.hash.startsWith('#/');
 					const key = u.pathname + u.search + (hashRoute ? u.hash : '');
 					if (key === curKey && !hashRoute) continue;

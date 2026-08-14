@@ -1,6 +1,28 @@
 name: capstone-autograder
 
 services:
+  worker:
+    build:
+      context: ./docker-sandbox
+    image: capstone-autograder/worker:latest
+    container_name: autograder-worker
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SANDBOX_WORKER_PORT:-8090}:${SANDBOX_WORKER_PORT:-8090}"
+    networks:
+      - autograder-net
+      - egress
+    env_file:
+      - .env
+    environment:
+      SANDBOX_WORKER_HOST: 0.0.0.0
+      SANDBOX_NETWORK: autograder-net
+      BUILDKIT_HOST: docker-container://autograder-buildkit
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - buildkit
+
   buildkit:
     image: moby/buildkit:latest
     container_name: autograder-buildkit
@@ -8,6 +30,13 @@ services:
     privileged: true
     volumes:
       - buildkit_cache:/var/lib/buildkit
+
+networks:
+  autograder-net:
+    name: autograder-net
+
+  egress:
+    name: autograder-egress
 
 volumes:
   buildkit_cache:

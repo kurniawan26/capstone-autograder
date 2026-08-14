@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DRIVER_VERSION="1.60.0"
+DRIVER_VERSION="${DRIVER_VERSION:-1.60.0}"
 DEST="${HOME}/.cache/ms-playwright-go/${DRIVER_VERSION}"
 
 command -v node >/dev/null || { echo "node is required but not on PATH" >&2; exit 1; }
@@ -26,7 +26,29 @@ fi
 
 echo "driver reports: $("${DEST}/node" "${DEST}/package/cli.js" --version)"
 
-echo "installing chromium..."
-"${DEST}/node" "${DEST}/package/cli.js" install chromium
+EXPECTED_REV="$("${DEST}/node" -p \
+  "require('${DEST}/package/browsers.json').browsers.find(b => b.name === 'chromium').revision")"
+
+BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-${HOME}/.cache/ms-playwright}"
+REQUIRED_DIRS=("chromium-${EXPECTED_REV}" "chromium_headless_shell-${EXPECTED_REV}")
+
+missing=()
+if [ "${BROWSERS_PATH}" = "0" ]; then
+  missing=("<PLAYWRIGHT_BROWSERS_PATH=0>")
+else
+  for dir in "${REQUIRED_DIRS[@]}"; do
+    [ -d "${BROWSERS_PATH}/${dir}" ] || missing+=("${dir}")
+  done
+fi
+
+if [ "${SKIP_BROWSER_INSTALL:-0}" = "1" ]; then
+  echo "skipping chromium install (SKIP_BROWSER_INSTALL=1)"
+elif [ ${#missing[@]} -eq 0 ]; then
+  echo "chromium-${EXPECTED_REV} already present in ${BROWSERS_PATH}; skipping download"
+else
+  echo "missing in ${BROWSERS_PATH}: ${missing[*]}"
+  echo "installing chromium..."
+  "${DEST}/node" "${DEST}/package/cli.js" install chromium
+fi
 
 echo "done"

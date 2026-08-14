@@ -144,7 +144,6 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- 1. Fetch and unzip ---
 	srcDir, err := s.store.FetchAndExtract(ctx, req.SourceKey)
 	if err != nil {
 		log.Error("fetch source failed", "err", err)
@@ -153,7 +152,6 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(srcDir)
 
-	// --- 2. Detect the build spec ---
 	plan, err := detect.Detect(srcDir, detect.Options{
 		RailpackAvailable: s.builder.RailpackAvailable(),
 	})
@@ -169,7 +167,6 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Info("build plan", "strategy", plan.Strategy, "framework", plan.Framework)
 
-	// --- 3. Build the ephemeral image ---
 	built, err := s.builder.Build(ctx, req.SubmissionID, srcDir, plan)
 	if built.Tag != "" {
 		defer s.builder.Remove(context.WithoutCancel(ctx), built.Tag)
@@ -180,7 +177,6 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// --- 4. Spawn the container under resource limits, 5. health-check ---
 	runCtx, cancel := context.WithTimeout(ctx, runBudget)
 	defer cancel()
 
@@ -199,7 +195,6 @@ func (s *Server) handleCapture(w http.ResponseWriter, r *http.Request) {
 	info.ServingPort = sb.ServingPort
 	info.InjectedPort = sb.InjectedPort
 
-	// --- 6. Playwright capture ---
 	shots, err := s.cap.Capture(sb.BaseURL, req.captureOptions())
 	if err != nil {
 		logs := sb.Logs(context.WithoutCancel(ctx), "100")

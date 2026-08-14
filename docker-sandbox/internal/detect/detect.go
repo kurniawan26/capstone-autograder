@@ -173,8 +173,6 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 	}
 }
 
-// --- helpers ---
-
 func dockerfile(base string, steps []string, cmd string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "FROM %s\nWORKDIR /app\nENV PORT=8080\nCOPY . .\n", base)

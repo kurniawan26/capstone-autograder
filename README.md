@@ -17,7 +17,9 @@ n8n  ──POST /v1/capture──▶  node ini  ──screenshot WebP──▶  
 | ----------------- | ---------------------------------------------------------- |
 | `docker-sandbox/` | Seluruh node: HTTP API, build ephemeral, capture, optimizer |
 
-`docker-compose.yml` menyediakan MinIO dan BuildKit.
+`docker-compose.yml` menyediakan BuildKit. Object storage-nya S3/MinIO eksternal
+— node ini tidak membawa servisnya sendiri, cukup diberi kredensialnya lewat
+environment (`S3_*`, lihat `.env.example`).
 
 ## Prasyarat
 
@@ -29,13 +31,16 @@ cgo tidak diperlukan.
 ## Setup
 
 ```bash
-# 1. Infrastruktur — MinIO :9000/:9001, BuildKit
+# 1. Kredensial — arahkan S3_* ke object storage eksternal
+cp .env.example .env
+
+# 2. BuildKit — hanya dipakai jalur ZIP
 docker compose up -d
 
-# 2. Driver Playwright + Chromium
+# 3. Driver Playwright + Chromium
 ./docker-sandbox/scripts/install-playwright-driver.sh
 
-# 3. Railpack — builder zero-config, hanya dipakai jalur ZIP
+# 4. Railpack — builder zero-config, hanya dipakai jalur ZIP
 gh release download v0.36.0 --repo railwayapp/railpack \
   --pattern 'railpack-*-x86_64-unknown-linux-musl.tar.gz' --dir /tmp/rp
 tar -xzf /tmp/rp/railpack-*.tar.gz -C /tmp/rp
@@ -316,15 +321,19 @@ baris pun kode siswa yang dieksekusi di mesin ini.
 
 ## Object storage
 
-Kedua versi gambar diunggah ke bucket `screenshots`:
+Storage-nya eksternal — S3 atau MinIO yang sudah berjalan di tempat lain,
+dikonfigurasi lewat `S3_*`. Kedua versi gambar diunggah ke bucket `screenshots`:
 `<submission_id>/<name>.png` dan `<submission_id>/<name>.webp`.
 
-Pemanggil mendapat WebP, tetapi PNG tetap disimpan sebagai bukti yang tidak
-pernah diresample — sengketa nilai diperiksa terhadap gambar aslinya. Isinya
-dilihat lewat konsol MinIO di :9001 bila diperlukan.
+**Bucket harus sudah ada.** Worker tidak pernah memanggil `MakeBucket`; unggahan
+ke bucket yang belum dibuat gagal dengan `NoSuchBucket` di stage `upload`. Siapkan
+`submissions` dan `screenshots` di sisi storage sebelum request pertama.
 
-Tidak ada pembersihan otomatis. Sebuah lifecycle rule di MinIO adalah tempat
-yang tepat untuk itu, dan belum dipasang.
+Pemanggil mendapat WebP, tetapi PNG tetap disimpan sebagai bukti yang tidak
+pernah diresample — sengketa nilai diperiksa terhadap gambar aslinya.
+
+Tidak ada pembersihan otomatis. Sebuah lifecycle rule di sisi storage adalah
+tempat yang tepat untuk itu, dan belum dipasang.
 
 ## Performa dan batasan
 
