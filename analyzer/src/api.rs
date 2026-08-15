@@ -2,11 +2,14 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use axum::extract::State;
+use axum::extract::{DefaultBodyLimit, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 
 use crate::capability;
 use crate::notebook;
@@ -16,6 +19,7 @@ use crate::types::*;
 
 const DEFAULT_MAX_EVIDENCE: usize = 5;
 const MAX_PARSE_FAILURES_REPORTED: usize = 20;
+const MAX_UPLOAD_BYTES: usize = 128 * 1024 * 1024;
 
 pub struct AppState {
     pub store: Store,
@@ -26,6 +30,7 @@ pub fn routes(state: Arc<AppState>) -> Router {
         .route("/healthz", get(health))
         .route("/v1/capabilities", get(capabilities))
         .route("/v1/analyze", post(analyze))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_BYTES))
         .with_state(state)
 }
 
@@ -57,19 +62,44 @@ async fn analyze(
             "submission_id is required".to_string(),
         );
     }
-    if req.source_key.trim().is_empty() {
-        return fail(
-            StatusCode::BAD_REQUEST,
-            "validate",
-            "source_key is required".to_string(),
-        );
-    }
-
-    let zip_bytes = match state.store.fetch(&req.source_key).await {
-        Ok(bytes) => bytes,
-        Err(e) => return fail(StatusCode::BAD_REQUEST, "fetch_source", e),
+    let zip_bytes = match req.source_base64.as_deref() {
+        Some(encoded) if !encoded.trim().is_empty() => {
+            match BASE64.decode(encoded.trim().as_bytes()) {
+                Ok(bytes) => bytes,
+                Err(e) => {
+                    return fail(
+                        StatusCode::BAD_REQUEST,
+                        "decode_source",
+                        format!("source_base64 bukan base64 yang sah: {e}"),
+                    );
+                }
+            }
+        }
+        _ => {
+            if req.source_key.trim().is_empty() {
+                return fail(
+                    StatusCode::BAD_REQUEST,
+                    "validate",
+                    "isi salah satu: source_key (ambil dari object storage) atau \
+source_base64 (kirim ZIP langsung)"
+                        .to_string(),
+                );
+            }
+            match state.store.fetch(&req.source_key).await {
+                Ok(bytes) => bytes,
+                Err(e) => return fail(StatusCode::BAD_REQUEST, "fetch_source", e),
+            }
+        }
     };
 
+    run_analysis(req, zip_bytes, started)
+}
+
+fn run_analysis(
+    req: AnalyzeRequest,
+    zip_bytes: Vec<u8>,
+    started: Instant,
+) -> axum::response::Response {
     let scan = match source::scan_zip(&zip_bytes) {
         Ok(scan) => scan,
         Err(e) => return fail(StatusCode::UNPROCESSABLE_ENTITY, "read_archive", e),

@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 pub struct AnalyzeRequest {
     pub submission_id: String,
+    #[serde(default)]
     pub source_key: String,
+    #[serde(default)]
+    pub source_base64: Option<String>,
     #[serde(default)]
     pub checks: Vec<CheckSpec>,
     #[serde(default)]
