@@ -23,6 +23,21 @@ services:
     depends_on:
       - buildkit
 
+  analyzer:
+    build:
+      context: ./analyzer
+    image: capstone-autograder/analyzer:latest
+    container_name: autograder-analyzer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${ANALYZER_PORT:-8092}:${ANALYZER_PORT:-8092}"
+    networks:
+      - egress
+    env_file:
+      - .env
+    environment:
+      ANALYZER_HOST: 0.0.0.0
+
   buildkit:
     image: moby/buildkit:latest
     container_name: autograder-buildkit

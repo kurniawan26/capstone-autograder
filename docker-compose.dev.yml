@@ -31,6 +31,28 @@ services:
       minio-init:
         condition: service_completed_successfully
 
+  analyzer:
+    build:
+      context: ./analyzer
+    image: capstone-autograder/analyzer:dev
+    container_name: autograder-analyzer-dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8092:8092"
+    networks:
+      - services
+    environment:
+      ANALYZER_HOST: 0.0.0.0
+      ANALYZER_PORT: 8092
+      S3_ENDPOINT_HOST: minio:9000
+      S3_ACCESS_KEY_ID: minioadmin
+      S3_SECRET_ACCESS_KEY: minioadmin
+      S3_USE_SSL: "false"
+      S3_SUBMISSIONS_BUCKET: submissions
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+
   buildkit:
     image: moby/buildkit:latest
     container_name: autograder-buildkit-dev
